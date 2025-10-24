@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@plugin 'tailwind-scrollbar';
+
+@theme {
+  --color-background: #f5f5f5;
+  --color-primary: #034ed1;
+  --color-secondary: #e70f3b;
+  --color-accent: #0dcaf8;
+  --color-text: #111827;
+
+  --color-light-background: #f5f5f5;
+  --color-light-primary: #034ed1;
+  --color-light-secondary: #e70f3b;
+  --color-light-accent: #0dcaf8;
+  --color-light-text: #111827;
+
+  --color-dark-background: #0a0225;
+  --color-dark-primary: #034ed1;
+  --color-dark-secondary: #e70f3b;
+  --color-dark-accent: #0dcaf8;
+  --color-dark-text: #f5f5f5;
+}
+
+:root.dark {
+  --color-background: var(--color-dark-background);
+  --color-primary: var(--color-dark-primary);
+  --color-secondary: var(--color-dark-secondary);
+  --color-accent: var(--color-dark-accent);
+  --color-text: var(--color-dark-text);
+}
+
