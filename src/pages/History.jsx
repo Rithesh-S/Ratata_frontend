@@ -111,16 +111,19 @@ const History = () => {
         </div>
 
         {matches.length > 0 ? (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-            <AnimatedList
-              items={matches.map(formatMatchData)}
-              onItemSelect={(item, index) => console.log(item, index)}
-              showGradients={true}
-              enableArrowNavigation={true}
-              displayScrollbar={true}
-              className="w-full"
-              itemClassName="border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors duration-200 px-4 py-3"
-            />
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-white/10 rounded-xl max-h-[70vh] flex flex-col shadow-2xl">
+            <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-white/10 scrollbar-thumb-rounded-full">
+              <AnimatedList
+                items={matches.map(formatMatchData)}
+                onItemSelect={(item, index) => console.log(item, index)}
+                showGradients={true}
+                enableArrowNavigation={true}
+                // The list component will now scroll within this parent
+                displayScrollbar={false} 
+                className="w-full"
+                itemClassName="border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors duration-200 px-4 py-3"
+              />
+            </div>
 
             <div ref={loaderRef} className="text-center py-6">
               {loading ? (

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSocket } from "../../hook/UseSocket";
@@ -58,7 +59,7 @@ const Player = React.memo(({ playerData, isCurrentPlayer, playerId, color }) => 
                     style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}40` }}
                     title={`${userName} | Health: ${health} | Kills: ${kills}`}
                 >
-                    <span className="drop-shadow-md text-xs font-bold">{initials}</span>
+                    <span className="drop-shadow-md text-xs font-bold select-none">{initials}</span>
                 </div>
                 <DirectionIndicator />
             </div>
@@ -104,7 +105,6 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const [keyBindings, setKeyBindings] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [showControls, setShowControls] = useState(false);
     const gameContainerRef = useRef(null);
 
     const navigate = useNavigate();
@@ -118,16 +118,22 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         return () => clearTimeout(loadingTimer);
     }, []);
 
-    useSocket("matchDeleted",() => {
+    useSocket("matchDeleted", () => { // ✨ The callback no longer needs a parameter
         toast.success("Match Ended!");
         sessionStorage.removeItem("roomCode");
-        navigate("/ratata/home", { replace: true });
+
+        const finalPlayers = players ? Object.values(players) : [];
+
+        navigate("/ratata/match/result", { 
+            replace: true, 
+            state: { players: finalPlayers } 
+        });
     });
 
     useEffect(() => {
         const loadKeyBindings = () => {
             try {
-                const bindings = JSON.parse(localStorage.getItem('keyBindings'));
+                const bindings = JSON.parse(localStorage.getItem('controls'));
                 const defaultBindings = {
                     exit: "Escape", moveDown: "ArrowDown", moveLeft: "ArrowLeft",
                     moveRight: "ArrowRight", moveUp: "ArrowUp", shoot: "Space"
@@ -155,7 +161,9 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
     useEffect(() => {
         const pressedKeys = new Set();
         const handleKeyPress = (event) => {
-            if (!keyBindings || isLoading) return;
+            if (event.repeat || !keyBindings || isLoading) {
+                return;
+            }
             const key = event.key;
             const code = event.code;
             if (pressedKeys.has(key) || pressedKeys.has(code)) {
@@ -267,12 +275,12 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
     );
 
     const PlayerList = () => (
-        <div className="absolute top-4 left-4 bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50 shadow-2xl min-w-48">
+        <div className="absolute top-4 left-4 select-none bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50 shadow-2xl min-w-48">
             <h3 className="text-white font-bold text-sm mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                 Players ({Object.keys(players || {}).length})
             </h3>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+            <div className="space-y-2 max-h-40 p-1 overflow-y-auto">
                 {Object.entries(players || {}).map(([id, player]) => (
                     <div key={id} className={`flex items-center gap-3 p-2 rounded-lg transition-all ${id === currentPlayerId ? 'bg-slate-700/80 ring-1 ring-cyan-400/50' : 'bg-slate-700/40'}`}>
                         <div className="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-white/50" style={{ backgroundColor: getPlayerColor(id) }} />
@@ -289,27 +297,9 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         </div>
     );
 
-    const ControlsHelp = () => (
-        <div className="absolute top-4 right-4 bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50 shadow-2xl min-w-48">
-            <h3 className="text-white font-bold text-sm mb-3 flex justify-between">
-                <span>Controls</span>
-                <button onClick={() => setShowControls(false)} className="text-slate-400 hover:text-white">✕</button>
-            </h3>
-            <div className="space-y-2 text-xs">
-                <div className="flex justify-between text-slate-200"><span>Move:</span><span className="text-cyan-300">Arrow Keys</span></div>
-                <div className="flex justify-between text-slate-200"><span>Shoot:</span><span className="text-cyan-300">Spacebar</span></div>
-                <div className="flex justify-between text-slate-200"><span>Exit:</span><span className="text-cyan-300">Escape</span></div>
-            </div>
-        </div>
-    );
-
     // --- FINAL RENDER ---
     return (
         <div className="relative w-full max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-4 px-2">
-                 <h2 className="text-white font-bold text-xl bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">Battle Arena</h2>
-                 <button onClick={() => setShowControls(!showControls)} className="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-white rounded-lg text-sm transition-all border border-slate-600/50">Controls</button>
-            </div>
             <div ref={gameContainerRef} className="w-full h-[70vh] max-h-[700px] overflow-hidden rounded-2xl border-2 border-slate-600/50 bg-slate-900 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))] shadow-2xl relative">
                 {isLoading ? ( <SkeletonLoader /> ) : (
                     <>
@@ -336,9 +326,8 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
                         </div>
 
                         <PlayerList />
-                        {showControls && <ControlsHelp />}
 
-                        <div className="absolute bottom-4 right-4 bg-slate-800/80 backdrop-blur-sm rounded-lg p-3 border border-slate-600/50">
+                        <div className="absolute bottom-4 right-4 select-none bg-slate-800/80 backdrop-blur-sm rounded-lg p-3 border border-slate-600/50">
                             <div className="text-white text-xs font-medium mb-2">Mini Map</div>
                             <div className="w-24 h-24 bg-slate-700/50 rounded border border-slate-600/50 relative overflow-hidden">
                                 {players && currentPlayerId && players[currentPlayerId]?.position && (
@@ -358,28 +347,3 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
 }
 
 export default GameMatrix;
-
-// Add these styles to your global CSS for the animations
-/*
-@keyframes pulse-slow {
-    0%, 100% { opacity: 1; transform: scale(1.1); }
-    50% { opacity: 0.8; transform: scale(1.05); }
-}
-@keyframes pulse-fast {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
-@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-.animate-pulse-slow {
-    animation: pulse-slow 2s ease-in-out infinite;
-}
-.animate-pulse-fast {
-    animation: pulse-fast 0.6s ease-in-out infinite;
-}
-.animate-shimmer {
-    animation: shimmer 2s ease-in-out infinite;
-}
-*/

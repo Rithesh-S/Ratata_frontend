@@ -15,6 +15,7 @@ import WaitingLobby from "./pages/WaitingLobby";
 import { ToastContainer } from "react-toastify";
 import JoinMatch from "./pages/JoinMatch";
 import GameLayout from "./components/layout/GameLayout";
+import MatchResults from "./pages/MatchResult";
 
 const Redirect = () => {
   const navigate = useNavigate();
@@ -57,6 +58,7 @@ function App() {
           <Route path="ratata/match/join" element={<ProtectedRoute><JoinMatch/></ProtectedRoute>} />
           <Route path="ratata/match/lobby" element={<ProtectedRoute><WaitingLobby/></ProtectedRoute>} />
           <Route path="ratata/match" element={<ProtectedRoute><GameLayout/></ProtectedRoute>} />
+          <Route path="ratata/match/result" element={<ProtectedRoute><MatchResults/></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/ratata"/>}/>
         </Routes>
         <ToastContainer position="top-right" autoClose={3000} theme="dark" />
