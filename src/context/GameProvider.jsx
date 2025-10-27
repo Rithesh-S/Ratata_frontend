@@ -22,7 +22,7 @@ export const GameProvider = ({ children }) => {
     let s = getSocket();
     
     if (token && !s) {
-      s = initSocket(import.meta.env.VITE_SOCKET_URL);
+      s = initSocket(import.meta.env.VITE_BASE_URL);
 
       s.on("connect", () => {
         setIsConnected(true);
