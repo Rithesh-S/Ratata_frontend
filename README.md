@@ -1,12 +1,66 @@
-# React + Vite
+# Ratata (Backend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the backend server for **Ratata**, a multiplayer shooting game.
 
-Currently, two official plugins are available:
+This server is built with **Node.js** and **Express.js**. It uses **Socket.IO** for real-time WebSocket communication to manage game logic, player state, and interactions between clients.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The frontend for this project can be found here: [Rithesh-S/Ratata\_frontend](https://github.com/Rithesh-S/Ratata_frontend)
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+  * **Runtime:** [Node.js](https://nodejs.org/)
+  * **Framework:** [Express.js](https://expressjs.com/)
+  * **Real-time Communication:** [Socket.IO](https://socket.io/)
+  * **Package Manager:** npm
+
+## 🚀 Getting Started
+
+Follow these instructions to get the server up and running on your local machine.
+
+### Prerequisites
+
+You must have [Node.js](https://nodejs.org/en) (which includes npm) installed on your computer.
+
+### Installation
+
+1.  Clone the repository to your local machine:
+
+    ```sh
+    git clone https://github.com/Rithesh-S/Ratata_backend.git
+    ```
+
+2.  Navigate into the project directory:
+
+    ```sh
+    cd Ratata_backend
+    ```
+
+3.  Install the required npm packages:
+
+    ```sh
+    npm install
+    ```
+
+### Running the Server
+
+To start the server, run the following command. The main application file is `server.js`.
+
+```sh
+npm start
+```
+
+*This command will typically run `node server.js` as defined in your `package.json` file.*
+
+The server will start, and the console will log the port it is listening on (e.g., `Server running on port 8080`).
+
+## 📡 Socket.IO Events
+
+This server relies on Socket.IO for real-time events.
+
+*(You should document your key socket events here. For example:)*
+
+  * **`connection`**: When a user first connects to the server.
+  * **`disconnect`**: When a user disconnects.
+  * **`playerMove`**: Receives player movement data and broadcasts it to other clients.
+  * **`playerShoot`**: Handles the logic for a player firing a projectile.
+  * **`playerJoinRoom`**: Handles logic for a player joining a specific game room.
