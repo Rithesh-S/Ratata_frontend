@@ -6,22 +6,20 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 // ============================================================================
-// 1. MEMOIZED CHILD COMPONENTS FOR PERFORMANCE
-// These components will only re-render when their specific props change.
+// 1. MEMOIZED CHILD COMPONENTS (Player, Bullet, Cell)
 // ============================================================================
 
 const Player = React.memo(({ playerData, isCurrentPlayer, playerId, color }) => {
+    // (Contains: Player component logic)
     const { position, health, direction, userName, kills, status } = playerData;
     if (status === 'dead') return null;
-
     const initials = userName ? userName.charAt(0).toUpperCase() : 'P';
     const CELL_SIZE = 32;
-
+    
     const DirectionIndicator = () => {
         const baseStyle = "absolute w-2 h-2 rounded-full transition-all duration-200 bg-white shadow-lg";
         const currentPlayerStyle = "w-3 h-3 ring-2 ring-white animate-pulse";
         const style = isCurrentPlayer ? `${baseStyle} ${currentPlayerStyle}` : baseStyle;
-
         switch(direction) {
             case 'up': return <div className={`${style} -top-1 left-1/2 -translate-x-1/2`} />;
             case 'down': return <div className={`${style} -bottom-1 left-1/2 -translate-x-1/2`} />;
@@ -30,7 +28,6 @@ const Player = React.memo(({ playerData, isCurrentPlayer, playerId, color }) => 
             default: return null;
         }
     };
-
     return (
         <div
             className="absolute transition-all duration-100 ease-linear"
@@ -68,9 +65,9 @@ const Player = React.memo(({ playerData, isCurrentPlayer, playerId, color }) => 
 });
 
 const Bullet = React.memo(({ bulletData }) => {
+    // (Contains: Bullet component logic)
     const { position } = bulletData;
     const CELL_SIZE = 32;
-
     return (
         <div
             className="absolute transition-all duration-100 ease-linear flex items-center justify-center"
@@ -88,7 +85,7 @@ const Bullet = React.memo(({ bulletData }) => {
 
 
 const MemoizedCell = React.memo(({ type }) => {
-    // Simplified classes for better performance. Avoid complex gradients on every cell if possible.
+    // (Contains: MemoizedCell component logic)
     const cellClass = type === 1
         ? 'bg-slate-700 border-r border-b border-slate-600/50'
         : 'bg-transparent';
@@ -96,8 +93,63 @@ const MemoizedCell = React.memo(({ type }) => {
 });
 
 // ============================================================================
-// 2. MAIN GAME COMPONENT - NOW ACTS AS A CONTROLLER
-// Its job is to manage state and render the memoized children efficiently.
+// 2. NEW/UPDATED CHILD COMPONENTS (MiniMap)
+// ============================================================================
+
+const MiniMap = React.memo(({ map, players, currentPlayerId, playerColorMap, colors }) => {
+    if (!map || map.length === 0) {
+        return (
+             <div className="w-24 h-24 bg-slate-700/50 rounded border border-slate-600/50 flex items-center justify-center">
+                 <span className="text-xs text-slate-400">Loading Map...</span>
+             </div>
+        )
+    }
+
+    const mapWidth = map[0].length;
+    const mapHeight = map.length;
+    
+    const containerSize = 96; 
+    const cellWidth = containerSize / mapWidth;
+    const cellHeight = containerSize / mapHeight;
+
+    return (
+        <div className="w-24 h-24 bg-slate-900/50 rounded border border-slate-600/50 relative overflow-hidden">
+            {/* Render the map walls */}
+            {map.map((row, y) => (
+                row.map((cell, x) => (
+                    cell === 1 && (
+                        <div 
+                            key={`${y}-${x}`}
+                            className="absolute bg-slate-600"
+                            style={{
+                                left: `${x * cellWidth}px`,
+                                top: `${y * cellHeight}px`,
+                                width: `${Math.ceil(cellWidth)}px`,
+                                height: `${Math.ceil(cellHeight)}px`
+                            }}
+                        />
+                    )
+                ))
+            ))}
+            
+            {/* Render current player (larger and brighter) */}
+            {players && currentPlayerId && players[currentPlayerId]?.position && (
+                <div 
+                    className="absolute w-2 h-2 bg-cyan-400 rounded-full ring-1 ring-white" 
+                    style={{
+                        left: `${(players[currentPlayerId].position.x / mapWidth) * 100}%`,
+                        top: `${(players[currentPlayerId].position.y / mapHeight) * 100}%`,
+                        transform: 'translate(-50%, -50%)'
+                    }} 
+                />
+            )}
+        </div>
+    );
+});
+
+
+// ============================================================================
+// 3. MAIN GAME COMPONENT
 // ============================================================================
 
 const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
@@ -111,19 +163,43 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
     const mazeGrid = map || [];
     const CELL_SIZE = 32;
 
-    // --- ORIGINAL HOOKS (Unchanged) ---
+    // --- NEW: Stable Color Map Logic ---
+    const colors = useMemo(() => [
+        '#FF2E63', '#08D9D6', '#FCE38A', '#EAFF00', '#FF9A76', 
+        '#A3DE83', '#FF6B9C', '#00F5FF', '#FFD93D', '#6BCF7F', 
+        '#FF8E6E', '#9D65C9'
+    ], []);
+
+    const sortedPlayerIds = useMemo(() => {
+        if (!players || Object.keys(players).length === 0) return "";
+        return Object.keys(players).sort().join(',');
+    }, [players]);
+
+    const playerColorMap = useMemo(() => {
+        if (!sortedPlayerIds) return {};
+
+        const map = {};
+        const ids = sortedPlayerIds.split(',');
+        
+        ids.forEach((playerId, index) => {
+            map[playerId] = colors[index % colors.length];
+        });
+        return map;
+    }, [sortedPlayerIds, colors]);
+    // --- End of Color Map Logic ---
+
+    
+    // --- Component Hooks ---
 
     useEffect(() => {
         const loadingTimer = setTimeout(() => setIsLoading(false), 1200);
         return () => clearTimeout(loadingTimer);
     }, []);
 
-    useSocket("matchDeleted", () => { // ✨ The callback no longer needs a parameter
+    useSocket("matchDeleted", () => { 
         toast.success("Match Ended!");
         sessionStorage.removeItem("roomCode");
-
         const finalPlayers = players ? Object.values(players) : [];
-
         navigate("/ratata/match/result", { 
             replace: true, 
             state: { players: finalPlayers } 
@@ -132,7 +208,7 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
 
     useEffect(() => {
         const loadKeyBindings = () => {
-            try {
+             try {
                 const bindings = JSON.parse(localStorage.getItem('controls'));
                 const defaultBindings = {
                     exit: "Escape", moveDown: "ArrowDown", moveLeft: "ArrowLeft",
@@ -160,18 +236,13 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
 
     useEffect(() => {
         const pressedKeys = new Set();
-        const handleKeyPress = (event) => {
-            if (event.repeat || !keyBindings || isLoading) {
-                return;
-            }
+        const handleKeyPress = (event) => { 
+            if (event.repeat || !keyBindings || isLoading) { return; }
             const key = event.key;
             const code = event.code;
-            if (pressedKeys.has(key) || pressedKeys.has(code)) {
-                event.preventDefault();
-                return;
-            }
+            if (pressedKeys.has(key) || pressedKeys.has(code)) { event.preventDefault(); return; }
             let action = Object.keys(keyBindings).find(act => keyBindings[act] === key || keyBindings[act] === code);
-
+            
             if (action) {
                 if (key) pressedKeys.add(key);
                 if (code) pressedKeys.add(code);
@@ -190,7 +261,7 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
                 }
             }
         };
-        const handleKeyUp = (event) => {
+        const handleKeyUp = (event) => { 
             pressedKeys.delete(event.key);
             pressedKeys.delete(event.code);
         };
@@ -202,9 +273,7 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         };
     }, [keyBindings, isLoading, emitEvent]);
 
-    // --- OPTIMIZED HOOKS & LOGIC ---
-
-    const updateCamera = useCallback(() => {
+    const updateCamera = useCallback(() => { 
         if (players && currentPlayerId && players[currentPlayerId]?.position && containerSize.width > 0 && mazeGrid.length > 0) {
             const playerPos = players[currentPlayerId].position;
             const mazeWidth = mazeGrid[0].length * CELL_SIZE;
@@ -235,17 +304,9 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         updateCamera();
     }, [updateCamera]);
 
-    const getPlayerColor = useCallback((playerId) => {
-        const colors = ['#FF2E63', '#08D9D6', '#FCE38A', '#EAFF00', '#FF9A76', '#A3DE83', '#FF6B9C', '#00F5FF', '#FFD93D', '#6BCF7F', '#FF8E6E', '#9D65C9'];
-        let hash = 0;
-        for (let i = 0; i < playerId.length; i++) {
-            hash = playerId.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return colors[Math.abs(hash) % colors.length];
-    }, []);
-
-    // Use useMemo to render the heavy maze grid only once
-    const renderedMaze = useMemo(() => {
+    
+    // --- OPTIMIZED RENDER HOOKS ---
+    const renderedMaze = useMemo(() => { 
         if (!mazeGrid || mazeGrid.length === 0) return null;
         return mazeGrid.map((row, rowIndex) => (
             <div key={rowIndex} className="flex">
@@ -256,14 +317,14 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         ));
     }, [mazeGrid]);
 
-    const bulletArray = useMemo(() => {
+    const bulletArray = useMemo(() => { 
         if (!bullets) return [];
         return Array.isArray(bullets) ? bullets : Object.values(bullets);
     }, [bullets]);
 
 
-    // --- UI COMPONENTS (Copied from original) ---
-    const SkeletonLoader = () => (
+    // --- UI COMPONENTS ---
+    const SkeletonLoader = () => ( 
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-700/10 to-transparent animate-shimmer" />
              <div className="text-center relative z-10">
@@ -274,74 +335,55 @@ const GameMatrix = ({ emitEvent, players, currentPlayerId, map, bullets }) => {
         </div>
     );
 
-    const PlayerList = () => (
-        <div className="absolute top-4 left-4 select-none bg-slate-800/80 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50 shadow-2xl min-w-48">
-            <h3 className="text-white font-bold text-sm mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                Players ({Object.keys(players || {}).length})
-            </h3>
-            <div className="space-y-2 max-h-40 p-1 overflow-y-auto">
-                {Object.entries(players || {}).map(([id, player]) => (
-                    <div key={id} className={`flex items-center gap-3 p-2 rounded-lg transition-all ${id === currentPlayerId ? 'bg-slate-700/80 ring-1 ring-cyan-400/50' : 'bg-slate-700/40'}`}>
-                        <div className="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-white/50" style={{ backgroundColor: getPlayerColor(id) }} />
-                        <span className="text-white text-sm font-medium truncate flex-1">
-                            {player.userName || 'Player'} {id === currentPlayerId && <span className="text-cyan-300 text-xs ml-1">(You)</span>}
-                        </span>
-                        <div className="flex items-center gap-2 text-xs">
-                            <span className="text-red-400">❤️ {player.health || 100}</span>
-                            <span className="text-yellow-400">⚔️ {player.kills || 0}</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
     // --- FINAL RENDER ---
     return (
-        <div className="relative w-full max-w-6xl mx-auto">
-            <div ref={gameContainerRef} className="w-full h-[70vh] max-h-[700px] overflow-hidden rounded-2xl border-2 border-slate-600/50 bg-slate-900 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))] shadow-2xl relative">
-                {isLoading ? ( <SkeletonLoader /> ) : (
-                    <>
-                        <div
-                            className="absolute transition-transform duration-200 ease-out"
-                            style={{
-                                transform: `translate(${cameraOffset.x}px, ${cameraOffset.y}px)`,
-                                width: `${mazeGrid[0]?.length * CELL_SIZE}px`,
-                                height: `${mazeGrid.length * CELL_SIZE}px`
-                            }}
-                        >
-                            {/* Render the static maze grid first, as the background */}
-                            {renderedMaze}
+        <div 
+            ref={gameContainerRef} 
+            className="w-full h-[90vh] overflow-hidden rounded-2xl border-2 border-slate-600/50 bg-slate-900 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))] shadow-2xl relative"
+        >
+            {isLoading ? ( <SkeletonLoader /> ) : (
+                <>
+                    <div
+                        className="absolute transition-transform duration-200 ease-out"
+                        style={{
+                            transform: `translate(${cameraOffset.x}px, ${cameraOffset.y}px)`,
+                            width: `${mazeGrid[0]?.length * CELL_SIZE}px`,
+                            height: `${mazeGrid.length * CELL_SIZE}px`
+                        }}
+                    >
+                        {renderedMaze}
+                        
+                        {Object.entries(players).map(([id, data], index) => (
+                            <Player 
+                                key={id} 
+                                playerId={id} 
+                                playerData={data} 
+                                isCurrentPlayer={id === currentPlayerId} 
+                                // Use the stable color map
+                                color={playerColorMap[id] || colors[index % colors.length]} 
+                            />
+                        ))}
+                        
+                        {bulletArray.map((bullet) => (
+                            <Bullet key={bullet.bulletId} bulletData={bullet} />
+                        ))}
+                    </div>
 
-                            {/* Render all players on top of the grid using absolute positioning */}
-                            {Object.entries(players).map(([id, data]) => (
-                                <Player key={id} playerId={id} playerData={data} isCurrentPlayer={id === currentPlayerId} color={getPlayerColor(id)} />
-                            ))}
-
-                            {/* Render all bullets on top of the grid */}
-                            {bulletArray.map((bullet) => (
-                                <Bullet key={bullet.bulletId} bulletData={bullet} />
-                            ))}
-                        </div>
-
-                        <PlayerList />
-
-                        <div className="absolute bottom-4 right-4 select-none bg-slate-800/80 backdrop-blur-sm rounded-lg p-3 border border-slate-600/50">
-                            <div className="text-white text-xs font-medium mb-2">Mini Map</div>
-                            <div className="w-24 h-24 bg-slate-700/50 rounded border border-slate-600/50 relative overflow-hidden">
-                                {players && currentPlayerId && players[currentPlayerId]?.position && (
-                                    <div className="absolute w-2 h-2 bg-cyan-400 rounded-full ring-2 ring-white animate-pulse" style={{
-                                        left: `${(players[currentPlayerId].position.x / mazeGrid[0]?.length) * 100}%`,
-                                        top: `${(players[currentPlayerId].position.y / mazeGrid.length) * 100}%`,
-                                        transform: 'translate(-50%, -50%)'
-                                    }} />
-                                )}
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
+                    <div className="absolute bottom-4 right-4 select-none bg-slate-800/80 backdrop-blur-sm rounded-lg p-3 border border-slate-600/50 shadow-xl">
+                        <h1 className="text-white text-xs font-medium mb-2">
+                            Mini Map
+                        </h1>
+                        <MiniMap 
+                            map={mazeGrid} 
+                            players={players} 
+                            currentPlayerId={currentPlayerId}
+                            // Pass the map and colors to the minimap
+                            playerColorMap={playerColorMap}
+                            colors={colors}
+                        />
+                    </div>
+                </>
+            )}
         </div>
     )
 }
